@@ -12,18 +12,30 @@
     <button id="pin-current" class="primary" title="Pin current tab (Alt+Shift+P)">+ Pin tab</button>
   </header>
 
-  <ul id="list" aria-label="Pinned tabs"></ul>
+  <section id="favorites" class="fav-grid" aria-label="Favorites"></section>
 
-  <div id="empty" hidden>
-    <p class="empty-title">No pinned tabs yet</p>
-    <p>Open a site you use all the time and hit <strong>+ Pin tab</strong>.
-       Wander off as much as you like — one click brings it back home.</p>
-  </div>
+  <section id="pinned-section" class="section" aria-label="Pinned tabs">
+    <div class="section-head">
+      <span>Pinned</span>
+      <button id="new-folder" class="ghost" title="New folder">+ Folder</button>
+    </div>
+    <div id="pinned"></div>
+  </section>
+
+  <section id="today-section" class="section" aria-label="Open tabs">
+    <div class="section-head"><span>Today</span></div>
+    <button id="new-tab" class="row new-tab" type="button">
+      <span class="row-icon" data-icon="plus"></span>
+      <span class="info"><span class="title">New tab</span></span>
+    </button>
+    <ul id="today" class="rows"></ul>
+  </section>
 
   <footer>
-    <span><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>H</kbd> sends the current tab home</span>
+    <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>H</kbd> sends the current tab home · right-click for more
   </footer>
 
+  <div id="menu" class="menu" role="menu" hidden></div>
   <div id="toast" role="status" hidden></div>
 
   <script type="module" src="panel.js"></script>

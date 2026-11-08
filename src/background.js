@@ -61,11 +61,18 @@ const handlers = {
     const [tab] = await chrome.tabs.query({ active: true, windowId });
     return pins.pinTab(tab);
   },
+  async pinTab({ tabId, place }) {
+    return pins.pinTab(await chrome.tabs.get(tabId), place);
+  },
+  place: ({ id, place }) => pins.placePin(id, place),
   open: ({ id, windowId }) => pins.openPin(id, windowId),
   reset: ({ id, windowId }) => pins.resetPin(id, windowId),
   setHome: ({ id }) => pins.setHomeToCurrent(id),
   unpin: ({ id }) => pins.unpin(id),
-  move: ({ id, toIndex }) => pins.movePin(id, toIndex),
+  createFolder: ({ name }) => pins.createFolder(name),
+  renameFolder: ({ id, name }) => pins.renameFolder(id, name),
+  toggleFolder: ({ id }) => pins.toggleFolder(id),
+  deleteFolder: ({ id }) => pins.deleteFolder(id),
 };
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {

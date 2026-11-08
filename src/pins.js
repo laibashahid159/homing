@@ -1,24 +1,40 @@
 // Pinned-tab state and the operations on it.
 //
 // A pin looks like:
-//   { id, homeUrl, title, tabId, createdAt }
+//   { id, homeUrl, title, tabId, createdAt, favorite, folderId }
 //
-// `tabId` is the live Chrome tab the pin is linked to, or null when that tab
-// is closed. Closing a pinned tab never removes the pin (same as Arc): click
-// it again and it reopens at its home URL.
+// - `tabId` is the live Chrome tab the pin is linked to, or null when that tab
+//   is closed. Closing a pinned tab never removes the pin (same as Arc): click
+//   it again and it reopens at its home URL.
+// - `favorite` pins show as icons in the grid at the top of the panel.
+// - `folderId` puts a (non-favorite) pin inside a folder.
+//
+// The order of the `pins` array is the display order everywhere.
+//
+// A folder looks like: { id, name, collapsed }
 //
 // Read helpers are safe to use anywhere. Functions that write should only be
 // called from the background service worker, which runs them one at a time.
 
-const KEY = 'pins';
+const PINS = 'pins';
+const FOLDERS = 'folders';
+
+export async function getState() {
+  const { [PINS]: pins = [], [FOLDERS]: folders = [] } =
+    await chrome.storage.local.get([PINS, FOLDERS]);
+  return { pins, folders };
+}
 
 export async function getPins() {
-  const { [KEY]: pins = [] } = await chrome.storage.local.get(KEY);
-  return pins;
+  return (await getState()).pins;
 }
 
 async function savePins(pins) {
-  await chrome.storage.local.set({ [KEY]: pins });
+  await chrome.storage.local.set({ [PINS]: pins });
+}
+
+async function saveFolders(folders) {
+  await chrome.storage.local.set({ [FOLDERS]: folders });
 }
 
 /** Compare URLs loosely: ignore the #hash and a trailing slash. */
@@ -71,27 +87,67 @@ export async function findPinByTabId(tabId) {
   return (await getPins()).find((p) => p.tabId === tabId) || null;
 }
 
+/**
+ * Insert `pin` into `pins` next to `anchorId` ('before' or 'after').
+ * No anchor (or an anchor that's gone) appends to the end.
+ */
+function insertPin(pins, pin, anchorId, position, originalIndex = -1) {
+  if (anchorId && anchorId === pin.id && originalIndex >= 0) {
+    pins.splice(originalIndex, 0, pin); // dropped on itself: stay put
+    return;
+  }
+  const idx = anchorId ? pins.findIndex((p) => p.id === anchorId) : -1;
+  if (idx < 0) pins.push(pin);
+  else pins.splice(position === 'after' ? idx + 1 : idx, 0, pin);
+}
+
+async function validFolderId(folderId) {
+  if (!folderId) return null;
+  const { folders } = await getState();
+  return folders.some((f) => f.id === folderId) ? folderId : null;
+}
+
 // ---------- write operations (background only) ----------
 
-export async function pinTab(tab) {
+/**
+ * Pin a tab. `place` optionally says where it goes:
+ *   { favorite, folderId, anchorId, position }
+ */
+export async function pinTab(tab, place = {}) {
   if (!tab || !isPinnable(tab.url)) {
     throw new Error("This page can't be pinned. Try a normal website.");
   }
-  const pins = await getPins();
-  const existing = pins.find((p) => p.tabId === tab.id);
-  if (existing) return existing;
+  const existing = await findPinByTabId(tab.id);
+  if (existing) return placePin(existing.id, place);
 
+  const pins = await getPins();
+  const favorite = !!place.favorite;
   const pin = {
     id: crypto.randomUUID(),
     homeUrl: tab.url,
     title: tab.title || new URL(tab.url).hostname,
     tabId: tab.id,
     createdAt: Date.now(),
+    favorite,
+    folderId: favorite ? null : await validFolderId(place.folderId),
   };
-  pins.push(pin);
+  insertPin(pins, pin, place.anchorId, place.position);
   await savePins(pins);
   // Also pin it in Chrome's own tab strip so it looks and behaves pinned.
   await chrome.tabs.update(tab.id, { pinned: true }).catch(() => {});
+  return pin;
+}
+
+/** Move a pin: into/out of favorites, into a folder, and/or to a new spot. */
+export async function placePin(id, { favorite = false, folderId = null, anchorId = null, position = 'before' } = {}) {
+  const pins = await getPins();
+  const i = pins.findIndex((p) => p.id === id);
+  if (i < 0) throw new Error('That pin no longer exists.');
+  const [pin] = pins.splice(i, 1);
+  pin.favorite = !!favorite;
+  pin.folderId = pin.favorite ? null : await validFolderId(folderId);
+  insertPin(pins, pin, anchorId, position, i);
+  await savePins(pins);
   return pin;
 }
 
@@ -142,15 +198,44 @@ export async function setHomeToCurrent(id) {
   return patchPin(id, { homeUrl: tab.url, title: tab.title || pin.title });
 }
 
-/** Move a pin to a new position in the list. */
-export async function movePin(id, toIndex) {
-  const pins = await getPins();
-  const from = pins.findIndex((p) => p.id === id);
-  if (from < 0) return;
-  const [pin] = pins.splice(from, 1);
-  pins.splice(Math.max(0, Math.min(toIndex, pins.length)), 0, pin);
-  await savePins(pins);
+// ---------- folders ----------
+
+export async function createFolder(name = 'New folder') {
+  const { folders } = await getState();
+  const folder = { id: crypto.randomUUID(), name, collapsed: false };
+  folders.push(folder);
+  await saveFolders(folders);
+  return folder;
 }
+
+export async function renameFolder(id, name) {
+  const clean = String(name || '').trim();
+  if (!clean) throw new Error('Folder name can’t be empty.');
+  const { folders } = await getState();
+  const folder = folders.find((f) => f.id === id);
+  if (!folder) throw new Error('That folder no longer exists.');
+  folder.name = clean.slice(0, 60);
+  await saveFolders(folders);
+  return folder;
+}
+
+export async function toggleFolder(id) {
+  const { folders } = await getState();
+  const folder = folders.find((f) => f.id === id);
+  if (!folder) return;
+  folder.collapsed = !folder.collapsed;
+  await saveFolders(folders);
+}
+
+/** Delete a folder. Its pins move out of it; nothing is unpinned. */
+export async function deleteFolder(id) {
+  const { pins, folders } = await getState();
+  for (const p of pins) if (p.folderId === id) p.folderId = null;
+  await savePins(pins);
+  await saveFolders(folders.filter((f) => f.id !== id));
+}
+
+// ---------- keeping tab links in sync ----------
 
 /** A tab was closed: keep the pin, just unlink it. */
 export async function forgetTab(tabId) {

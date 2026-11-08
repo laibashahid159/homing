@@ -1,11 +1,17 @@
 {
   "manifest_version": 3,
-  "name": "Homebase — Arc-style pinned tabs",
+  "name": "Homebase — Arc-style sidebar",
   "short_name": "Homebase",
-  "version": "0.1.0",
-  "description": "Pinned tabs that remember their home URL. Wander off, then reset back home in one click — like Arc.",
+  "version": "0.2.0",
+  "description": "An Arc-style sidebar for Chrome: a Favorites grid, pinned tabs with folders that remember their home URL, and your open tabs.",
   "minimum_chrome_version": "116",
-  "permissions": ["tabs", "storage", "sidePanel", "contextMenus", "favicon"],
+  "permissions": [
+    "tabs",
+    "storage",
+    "sidePanel",
+    "contextMenus",
+    "favicon"
+  ],
   "background": {
     "service_worker": "src/background.js",
     "type": "module"
@@ -28,11 +34,15 @@
   },
   "commands": {
     "pin-current-tab": {
-      "suggested_key": { "default": "Alt+Shift+P" },
+      "suggested_key": {
+        "default": "Alt+Shift+P"
+      },
       "description": "Pin the current tab to Homebase"
     },
     "reset-current-tab": {
-      "suggested_key": { "default": "Alt+Shift+H" },
+      "suggested_key": {
+        "default": "Alt+Shift+H"
+      },
       "description": "Send the current pinned tab back to its home URL"
     }
   }
