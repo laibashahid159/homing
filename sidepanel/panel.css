@@ -1,0 +1,157 @@
+:root {
+  --bg: #f4f2fb;
+  --card: #ffffff;
+  --card-hover: #ece8fa;
+  --active: #e0d9fb;
+  --text: #1d1b26;
+  --muted: #6e6a80;
+  --accent: #6c4cf0;
+  --accent-text: #ffffff;
+  --border: #e3dff0;
+  --drift: #e8890c;
+  --radius: 10px;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17151f;
+    --card: #221f2d;
+    --card-hover: #2c2839;
+    --active: #3a3253;
+    --text: #ece9f5;
+    --muted: #9a95ad;
+    --accent: #8f74ff;
+    --border: #322d42;
+    --drift: #ffae42;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 12px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+h1 { font-size: 15px; margin: 0; letter-spacing: -0.01em; }
+
+button {
+  font: inherit;
+  border: 0;
+  cursor: pointer;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+}
+
+button.primary {
+  background: var(--accent);
+  color: var(--accent-text);
+  padding: 6px 10px;
+  font-weight: 600;
+}
+button.primary:hover { filter: brightness(1.08); }
+
+#list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pin {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  user-select: none;
+}
+.pin:hover { background: var(--card-hover); }
+.pin.active { background: var(--active); border-color: var(--accent); }
+.pin.closed .info { opacity: 0.55; }
+.pin.dragging { opacity: 0.4; }
+.pin.drop-above { box-shadow: 0 -2px 0 var(--accent); }
+.pin.drop-below { box-shadow: 0 2px 0 var(--accent); }
+
+.favicon { width: 16px; height: 16px; flex: none; }
+
+.info { flex: 1; min-width: 0; }
+.title, .sub {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.title { font-weight: 500; }
+.sub { font-size: 11px; color: var(--muted); }
+.sub.drift { color: var(--drift); }
+
+.actions { display: flex; gap: 2px; flex: none; }
+.actions button {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+.actions button:hover { background: var(--bg); color: var(--text); }
+.actions .reset { color: var(--drift); font-weight: 700; }
+
+/* Secondary actions only show on hover/focus to keep the list calm. */
+.actions .secondary { opacity: 0; }
+.pin:hover .secondary,
+.pin:focus-within .secondary { opacity: 1; }
+
+#empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 32px 12px;
+}
+.empty-title { color: var(--text); font-weight: 600; font-size: 14px; }
+
+footer {
+  margin-top: auto;
+  padding-top: 16px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+}
+kbd {
+  font: inherit;
+  padding: 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--card);
+}
+
+#toast {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--text);
+  color: var(--bg);
+  text-align: center;
+}
