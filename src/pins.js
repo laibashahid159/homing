@@ -12,7 +12,8 @@
 //
 // The order of the `pins` array is the display order everywhere.
 //
-// A folder looks like: { id, name, collapsed }
+// A folder looks like: { id, name, collapsed, parentId }
+// (`parentId` is the folder it sits inside, or null at the top level.)
 //
 // Read helpers are safe to use anywhere. Functions that write should only be
 // called from the background service worker, which runs them one at a time.
@@ -119,7 +120,10 @@ export async function pinTab(tab, place = {}) {
     throw new Error("This page can't be pinned. Try a normal website.");
   }
   const existing = await findPinByTabId(tab.id);
-  if (existing) return placePin(existing.id, place);
+  if (existing) {
+    // Already pinned: only move it if the caller said where to.
+    return Object.keys(place).length ? placePin(existing.id, place) : existing;
+  }
 
   const pins = await getPins();
   const favorite = !!place.favorite;
@@ -206,6 +210,7 @@ export async function resetPin(id, windowId) {
   const tab = await getTab(pin.tabId);
   if (!tab) return openPin(id, windowId);
   await chrome.tabs.update(tab.id, { url: pin.homeUrl, active: true });
+  await chrome.windows.update(tab.windowId, { focused: true });
   return tab;
 }
 
@@ -357,6 +362,21 @@ export async function forgetTab(tabId) {
     }
   }
   if (changed) await savePins(pins);
+}
+
+/**
+ * A pinned tab appeared or finished loading. If a closed pin has exactly
+ * this URL as home, link them. This catches tabs Chrome restores after our
+ * startup check already ran.
+ */
+export async function linkIfMatch(tab) {
+  if (!tab?.pinned || !tab.url) return;
+  const pins = await getPins();
+  if (pins.some((p) => p.tabId === tab.id)) return;
+  const pin = pins.find((p) => p.tabId == null && normalizeUrl(p.homeUrl) === normalizeUrl(tab.url));
+  if (!pin) return;
+  pin.tabId = tab.id;
+  await savePins(pins);
 }
 
 /** Chrome swapped one tab for another (e.g. prerendering). */

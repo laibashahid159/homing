@@ -41,6 +41,10 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   serial(() => pins.forgetTab(tabId));
 });
 
+chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
+  if (changeInfo.url || changeInfo.pinned) serial(() => pins.linkIfMatch(tab));
+});
+
 chrome.tabs.onReplaced.addListener((addedTabId, removedTabId) => {
   serial(() => pins.replaceTab(addedTabId, removedTabId));
 });

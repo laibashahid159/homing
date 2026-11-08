@@ -1,6 +1,6 @@
 # Homebase
 
-**An Arc-style sidebar for Chrome.** A Favorites icon grid, pinned tabs (with folders) that remember their *home* URL, and your open tabs, all in Chrome's side panel.
+**An Arc-style sidebar for Chrome.** A Favorites icon grid, pinned tabs in folders that remember their *home* URL, and your open tabs, all in Chrome's side panel.
 
 Arc is winding down, and these are the Arc features I missed most, so I rebuilt them for Chrome.
 
@@ -8,19 +8,22 @@ Arc is winding down, and these are the Arc features I missed most, so I rebuilt 
 
 ## Features
 
-- **Favorites grid.** Your most-used sites as big icons at the top, like Arc. An orange dot means the tab has wandered from home.
-- **Folders and subfolders.** Group pinned tabs into collapsible, renameable folders, nested as deep as you like.
-- **Rename pinned tabs.** Swap long page titles like "Inbox (23) – …" for your own names. Your name sticks even if you change the tab's home page.
-- **Auto-close.** Pinned tabs you haven't touched for a while (12 hours by default) close on their own. They stay in their folder, and one click reopens them at home.
-- **Today.** The window's other open tabs, listed below your pins, so the side panel can replace the tab strip.
-- **Drag and drop everywhere.** Drag a tab into Favorites, a folder, or the pinned list to pin it. Drag a pin down to Today to unpin it.
-- **Home URL per pinned tab.** Pin a tab, and Homebase remembers where it started.
-- **Drift detection.** When a pinned tab wanders off, the side panel shows where it is now ("Away: …").
-- **One-click reset.** Hit ↺ (or `Alt+Shift+H`) to go straight back home.
-- **Pins outlive their tabs.** Close a pinned tab and the pin stays. Click it to reopen at home.
-- **Make this the new home.** Found a better starting page? Hit ⌂ to make it home.
-- **Survives restarts.** Pins re-attach to your restored tabs when Chrome starts.
-- **Private by design.** Everything is stored locally in your browser. No accounts, no servers, no tracking.
+**Pinned tabs that remember home**
+- Pin a tab and Homebase remembers the page it started on.
+- When a pinned tab wanders off, the panel shows where it is now ("Away: …"). One click on ↺ (or `Alt+Shift+H`) takes it back home.
+- Found a better starting page? Hit ⌂ to make it the new home.
+- Rename pinned tabs to swap long titles like "Inbox (23) – …" for your own names.
+
+**Organise**
+- **Favorites:** your most-used sites as big icons at the top. An orange dot means the tab has wandered from home.
+- **Folders and subfolders:** collapsible, renameable, nested as deep as you like.
+- **Today:** the window's other open tabs, listed below your pins.
+- **Drag and drop everywhere:** drag a tab into Favorites or a folder to pin it, or drag a pin down to Today to unpin it.
+
+**Stays out of your way**
+- **Auto-close:** pinned tabs you haven't touched for 12 hours (configurable) close on their own. They stay in their folder, and one click reopens them at home.
+- Pins survive closing their tab and restarting Chrome.
+- Everything is stored locally in your browser. No accounts, no servers, no tracking.
 
 ## Install (developer mode)
 
@@ -31,26 +34,24 @@ Arc is winding down, and these are the Arc features I missed most, so I rebuilt 
 
 Requires Chrome 121 or later.
 
-**Tip:** to put the side panel on the right or left, go to Chrome **Settings → Appearance → Side panel** and pick a side.
+**Tip:** to put the side panel on the right or left, go to Chrome **Settings → Appearance → Side panel**.
 
 ## Usage
 
 | Action | How |
 | --- | --- |
-| Pin the current tab | **+ Pin tab** in the panel, right-click a page → *Pin to Homebase*, or `Alt+Shift+P` |
-| Go to a pinned tab | Click it in the panel (reopens it if it was closed) |
-| Back to home | ↺ in the panel, or `Alt+Shift+H` on the tab |
-| Make the current page home | ⌂ (shown on hover when a tab has drifted) |
-| Add to Favorites | Drag a tab from the list into the grid, or right-click → *Add to Favorites* |
-| Create a folder | **+ Folder**, then type a name (double-click a folder to rename) |
-| Create a subfolder | Hover a folder → folder-plus icon, or right-click → *New subfolder* |
-| Nest or move folders | Drag a folder onto another (middle = inside, top/bottom edge = next to it) |
+| Pin the current tab | **+ Pin tab**, right-click a page → *Pin to Homebase*, or `Alt+Shift+P` |
+| Go to a pinned tab | Click it (reopens it at home if it was closed) |
+| Back to home | ↺ on the tab, or `Alt+Shift+H` |
+| Make the current page home | ⌂ (shown on hover when a tab has wandered off) |
+| Rename a pinned tab | Double-click it, hover → pencil, right-click → *Rename*, or `F2`. Clear the name to go back to the page title |
+| Add to Favorites | Drag a tab into the grid, or right-click → *Add to Favorites* |
+| Create a folder / subfolder | **+ Folder**, or hover a folder → folder-plus icon |
 | Add a tab to a folder | Drag it onto the folder, or right-click it in Today → *Add to folder* |
-| Change auto-close time | Settings icon (top right): Never, 1 hour … 1 week |
-| Rename a pinned tab | Double-click it, hover → pencil, right-click → *Rename*, or `F2`. Leave it empty to go back to the page title |
+| Nest or move folders | Drag a folder onto another (middle = inside, top/bottom edge = next to it) |
 | Unpin | × on hover, right-click → *Unpin*, or drag down to Today |
-| Reorder | Drag and drop (favorites, pins and open tabs) |
-| More options | Right-click anything |
+| Change auto-close time | Settings icon (top right): Never, 1 hour … 1 week |
+| Everything else | Right-click |
 
 You can change the shortcuts at `chrome://extensions/shortcuts`.
 
@@ -58,26 +59,32 @@ You can change the shortcuts at `chrome://extensions/shortcuts`.
 
 ```
 manifest.json         Manifest V3 config
-src/pins.js           Pins, favorites and folders: state + operations (stored in chrome.storage.local)
-src/background.js     Service worker: tab events, shortcuts, context menu, auto-close alarm, messages
+src/pins.js           Pins, favorites, folders and settings: state + operations
+src/background.js     Service worker: tab events, shortcuts, context menu, auto-close alarm
 sidepanel/            The side panel UI (plain HTML/CSS/JS, no build step)
 ```
 
-- The **service worker** owns all writes and runs them one at a time through a small promise queue, so tab events and panel clicks can't overwrite each other.
-- The **side panel** reads state directly and re-renders on storage and tab events.
-- Each pin stores the `tabId` it's linked to. Tab IDs change after a browser restart, so on startup Homebase re-links pins to restored pinned tabs: exact URL first, then same site.
-- **Auto-close** runs every 5 minutes. It uses Chrome's `tab.lastAccessed` and never closes the tab you're looking at or one that's playing audio.
-- Favicons come from Chrome's built-in `_favicon` API, so nothing is fetched from the network.
+- **One writer:** the side panel never changes data itself. It sends a message, and the service worker runs every change one at a time through a small promise queue, so clicks and tab events can't overwrite each other. The panel re-renders when storage changes.
+- **Tabs vs pins:** each pin stores the `tabId` it's linked to, or `null` when the tab is closed. Tab IDs change after a restart, so Homebase re-links pins to the restored pinned tabs (exact URL first, then same site).
+- **Auto-close** checks every 5 minutes using Chrome's `tab.lastAccessed`. It never closes the tab you're looking at or one that's playing audio.
+- **Favicons** come from Chrome's built-in `_favicon` cache, so the panel makes no network requests.
+- **Safe rendering:** page titles are inserted as text, never as HTML.
+
+## Known limitations
+
+- Chrome doesn't let extensions hide its own tab strip, so tabs still appear there too.
+- Unpinning a tab from Chrome's tab strip doesn't unpin it in Homebase.
+- After a long break, pinned tabs Chrome restores on startup may count as "untouched" and auto-close soon after. They stay in your list.
+- Pins are shared across all windows. Clicking one may switch you to the window it's open in.
+- Folders always appear above loose pinned tabs.
 
 ## Roadmap
 
-- [x] Auto-close untouched pinned tabs
-- [ ] Auto-archive open (unpinned) tabs too, with a searchable archive
-- [x] Rename pins
-- [x] Favorites grid and folders
+- [ ] Undo for unpin and delete
+- [ ] Export / import (backup your pins and folders)
+- [ ] Search across pins and open tabs
+- [ ] Auto-archive for unpinned tabs, with a searchable archive
 - [ ] Spaces (separate sets of pins for work and personal)
-- [x] Subfolders and dragging folders
-- [ ] Sync pins across devices (`chrome.storage.sync`)
 - [ ] Chrome Web Store release
 
 Ideas and PRs are welcome. Open an issue first for bigger changes.
@@ -85,3 +92,5 @@ Ideas and PRs are welcome. Open an issue first for bigger changes.
 ## License
 
 [MIT](LICENSE)
+
+*Not affiliated with The Browser Company or Arc.*
