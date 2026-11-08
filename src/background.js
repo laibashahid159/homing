@@ -14,6 +14,14 @@ chrome.sidePanel
   .setPanelBehavior({ openPanelOnActionClick: true })
   .catch(console.error);
 
+// Check for idle pinned tabs every few minutes.
+chrome.alarms.get('auto-close', (alarm) => {
+  if (!alarm) chrome.alarms.create('auto-close', { periodInMinutes: 5 });
+});
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'auto-close') serial(() => pins.closeIdleTabs()).catch(console.warn);
+});
+
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
@@ -69,7 +77,9 @@ const handlers = {
   reset: ({ id, windowId }) => pins.resetPin(id, windowId),
   setHome: ({ id }) => pins.setHomeToCurrent(id),
   unpin: ({ id }) => pins.unpin(id),
-  createFolder: ({ name }) => pins.createFolder(name),
+  createFolder: ({ name, parentId }) => pins.createFolder(name, parentId),
+  moveFolder: ({ id, place }) => pins.moveFolder(id, place),
+  setSettings: ({ settings }) => pins.setSettings(settings),
   renameFolder: ({ id, name }) => pins.renameFolder(id, name),
   toggleFolder: ({ id }) => pins.toggleFolder(id),
   deleteFolder: ({ id }) => pins.deleteFolder(id),

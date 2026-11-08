@@ -9,7 +9,8 @@ Arc is winding down, and these are the Arc features I missed most, so I rebuilt 
 ## Features
 
 - **Favorites grid.** Your most-used sites as big icons at the top, like Arc. An orange dot means the tab has wandered from home.
-- **Folders.** Group pinned tabs into collapsible, renameable folders.
+- **Folders and subfolders.** Group pinned tabs into collapsible, renameable folders, nested as deep as you like.
+- **Auto-close.** Pinned tabs you haven't touched for a while (12 hours by default) close on their own. They stay in their folder, and one click reopens them at home.
 - **Today.** The window's other open tabs, listed below your pins, so the side panel can replace the tab strip.
 - **Drag and drop everywhere.** Drag a tab into Favorites, a folder, or the pinned list to pin it. Drag a pin down to Today to unpin it.
 - **Home URL per pinned tab.** Pin a tab, and Homebase remembers where it started.
@@ -27,7 +28,9 @@ Arc is winding down, and these are the Arc features I missed most, so I rebuilt 
 3. Click **Load unpacked** and select the project folder.
 4. Pin the Homebase icon to your toolbar and click it to open the side panel.
 
-Requires Chrome 116 or later.
+Requires Chrome 121 or later.
+
+**Tip:** to put the side panel on the right or left, go to Chrome **Settings → Appearance → Side panel** and pick a side.
 
 ## Usage
 
@@ -37,9 +40,12 @@ Requires Chrome 116 or later.
 | Go to a pinned tab | Click it in the panel (reopens it if it was closed) |
 | Back to home | ↺ in the panel, or `Alt+Shift+H` on the tab |
 | Make the current page home | ⌂ (shown on hover when a tab has drifted) |
-| Add to Favorites | ★ on hover, right-click → *Add to Favorites*, or drag into the grid |
+| Add to Favorites | Drag a tab from the list into the grid, or right-click → *Add to Favorites* |
 | Create a folder | **+ Folder**, then type a name (double-click a folder to rename) |
-| Move into a folder | Drag onto the folder, or right-click → *Move to folder* |
+| Create a subfolder | Hover a folder → folder-plus icon, or right-click → *New subfolder* |
+| Nest or move folders | Drag a folder onto another (middle = inside, top/bottom edge = next to it) |
+| Add a tab to a folder | Drag it onto the folder, or right-click it in Today → *Add to folder* |
+| Change auto-close time | Settings icon (top right): Never, 1 hour … 1 week |
 | Unpin | × on hover, right-click → *Unpin*, or drag down to Today |
 | Reorder | Drag and drop (favorites, pins and open tabs) |
 | More options | Right-click anything |
@@ -51,22 +57,24 @@ You can change the shortcuts at `chrome://extensions/shortcuts`.
 ```
 manifest.json         Manifest V3 config
 src/pins.js           Pins, favorites and folders: state + operations (stored in chrome.storage.local)
-src/background.js     Service worker: tab events, shortcuts, context menu, messages
+src/background.js     Service worker: tab events, shortcuts, context menu, auto-close alarm, messages
 sidepanel/            The side panel UI (plain HTML/CSS/JS, no build step)
 ```
 
 - The **service worker** owns all writes and runs them one at a time through a small promise queue, so tab events and panel clicks can't overwrite each other.
 - The **side panel** reads state directly and re-renders on storage and tab events.
 - Each pin stores the `tabId` it's linked to. Tab IDs change after a browser restart, so on startup Homebase re-links pins to restored pinned tabs: exact URL first, then same site.
+- **Auto-close** runs every 5 minutes. It uses Chrome's `tab.lastAccessed` and never closes the tab you're looking at or one that's playing audio.
 - Favicons come from Chrome's built-in `_favicon` API, so nothing is fetched from the network.
 
 ## Roadmap
 
-- [ ] Auto-archive: close tabs you haven't touched in X hours, with a searchable archive
+- [x] Auto-close untouched pinned tabs
+- [ ] Auto-archive open (unpinned) tabs too, with a searchable archive
 - [ ] Rename pins
 - [x] Favorites grid and folders
 - [ ] Spaces (separate sets of pins for work and personal)
-- [ ] Drag folders to reorder them
+- [x] Subfolders and dragging folders
 - [ ] Sync pins across devices (`chrome.storage.sync`)
 - [ ] Chrome Web Store release
 

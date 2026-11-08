@@ -200,10 +200,50 @@ export async function setHomeToCurrent(id) {
 
 // ---------- folders ----------
 
-export async function createFolder(name = 'New folder') {
+/** Create a folder, optionally inside another folder. */
+export async function createFolder(name = 'New folder', parentId = null) {
   const { folders } = await getState();
-  const folder = { id: crypto.randomUUID(), name, collapsed: false };
+  const parent = parentId && folders.find((f) => f.id === parentId);
+  if (parent) parent.collapsed = false; // show the new subfolder
+  const folder = { id: crypto.randomUUID(), name, collapsed: false, parentId: parent ? parent.id : null };
   folders.push(folder);
+  await saveFolders(folders);
+  return folder;
+}
+
+/** True if `folderId` is `ancestorId` or sits somewhere inside it. */
+export function isInside(folders, folderId, ancestorId) {
+  const seen = new Set();
+  let current = folders.find((f) => f.id === folderId);
+  while (current && !seen.has(current.id)) {
+    if (current.id === ancestorId) return true;
+    seen.add(current.id);
+    current = folders.find((f) => f.id === current.parentId);
+  }
+  return false;
+}
+
+/**
+ * Move a folder: into another folder (`parentId`), and/or next to a sibling
+ * (`anchorId` + 'before'/'after'). parentId null means top level.
+ */
+export async function moveFolder(id, { parentId = null, anchorId = null, position = 'before' } = {}) {
+  const { folders } = await getState();
+  const i = folders.findIndex((f) => f.id === id);
+  if (i < 0) throw new Error('That folder no longer exists.');
+  if (parentId && !folders.some((f) => f.id === parentId)) parentId = null;
+  if (parentId && isInside(folders, parentId, id)) {
+    throw new Error("A folder can't go inside itself.");
+  }
+  const [folder] = folders.splice(i, 1);
+  folder.parentId = parentId;
+  if (anchorId === id) {
+    folders.splice(i, 0, folder);
+  } else {
+    const idx = anchorId ? folders.findIndex((f) => f.id === anchorId) : -1;
+    if (idx < 0) folders.push(folder);
+    else folders.splice(position === 'after' ? idx + 1 : idx, 0, folder);
+  }
   await saveFolders(folders);
   return folder;
 }
@@ -227,12 +267,60 @@ export async function toggleFolder(id) {
   await saveFolders(folders);
 }
 
-/** Delete a folder. Its pins move out of it; nothing is unpinned. */
+/**
+ * Delete a folder. Its tabs and subfolders move up one level;
+ * nothing is unpinned.
+ */
 export async function deleteFolder(id) {
   const { pins, folders } = await getState();
-  for (const p of pins) if (p.folderId === id) p.folderId = null;
+  const folder = folders.find((f) => f.id === id);
+  if (!folder) return;
+  const parentId = folder.parentId || null;
+  for (const p of pins) if (p.folderId === id) p.folderId = parentId;
+  for (const f of folders) if (f.parentId === id) f.parentId = parentId;
   await savePins(pins);
   await saveFolders(folders.filter((f) => f.id !== id));
+}
+
+// ---------- settings + auto-close ----------
+
+const SETTINGS = 'settings';
+export const DEFAULT_SETTINGS = { autoCloseMinutes: 720 }; // 12 hours
+
+export async function getSettings() {
+  const { [SETTINGS]: s = {} } = await chrome.storage.local.get(SETTINGS);
+  return { ...DEFAULT_SETTINGS, ...s };
+}
+
+export async function setSettings(patch) {
+  const next = { ...(await getSettings()), ...patch };
+  await chrome.storage.local.set({ [SETTINGS]: next });
+  return next;
+}
+
+/**
+ * Close pinned tabs nobody has looked at for a while. The pins stay in their
+ * folders (shown as closed) and reopen at home when clicked.
+ * Skips the tab you're looking at in each window and tabs playing audio.
+ *
+ * @returns {number[]} ids of the tabs that were closed
+ */
+export async function closeIdleTabs({ now = Date.now() } = {}) {
+  const { autoCloseMinutes } = await getSettings();
+  if (!autoCloseMinutes) return [];
+  const limit = autoCloseMinutes * 60_000;
+  const pins = await getPins();
+  const linked = new Set(pins.map((p) => p.tabId).filter((id) => id != null));
+  const tabs = await chrome.tabs.query({});
+  const idle = tabs.filter((t) =>
+    linked.has(t.id) &&
+    !t.active &&
+    !t.audible &&
+    typeof t.lastAccessed === 'number' &&
+    now - t.lastAccessed > limit);
+  const ids = idle.map((t) => t.id);
+  if (ids.length) await chrome.tabs.remove(ids);
+  return ids;
 }
 
 // ---------- keeping tab links in sync ----------

@@ -9,7 +9,10 @@
 <body>
   <header>
     <h1>Homebase</h1>
-    <button id="pin-current" class="primary" title="Pin current tab (Alt+Shift+P)">+ Pin tab</button>
+    <div class="header-actions">
+      <button id="settings" class="icon-btn" title="Settings" aria-label="Settings"><span data-icon="sliders"></span></button>
+      <button id="pin-current" class="primary" title="Pin current tab (Alt+Shift+P)">+ Pin tab</button>
+    </div>
   </header>
 
   <section id="favorites" class="fav-grid" aria-label="Favorites"></section>
@@ -32,7 +35,8 @@
   </section>
 
   <footer>
-    <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>H</kbd> sends the current tab home · right-click for more
+    <div id="auto-close-note"></div>
+    <div>Right-click anything for more options</div>
   </footer>
 
   <div id="menu" class="menu" role="menu" hidden></div>
