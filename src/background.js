@@ -26,7 +26,7 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: 'pin-page',
-      title: 'Pin to Homebase',
+      title: 'Pin to Homing',
       contexts: ['page'],
     });
   });

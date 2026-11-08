@@ -1,15 +1,15 @@
-# Homebase
+# Homing
 
-**An Arc-style sidebar for Chrome.** A Favorites icon grid, pinned tabs in folders that remember their *home* URL, and your open tabs, all in Chrome's side panel.
+**Tabs that find their way home.** A sidebar for Chrome with a Favorites icon grid, pinned tabs in folders that remember their *home* page, and your open tabs, all in Chrome's side panel.
 
-Arc is winding down, and these are the Arc features I missed most, so I rebuilt them for Chrome.
+Inspired by the Arc browser. Arc is winding down, and these are the features I missed most, so I rebuilt them for Chrome.
 
-<img src="docs/panel.png" width="360" alt="Homebase side panel">
+<img src="docs/panel.png" width="360" alt="Homing side panel">
 
 ## Features
 
 **Pinned tabs that remember home**
-- Pin a tab and Homebase remembers the page it started on.
+- Pin a tab and Homing remembers the page it started on.
 - When a pinned tab wanders off, the panel shows where it is now ("Away: …"). One click on ↺ (or `Alt+Shift+H`) takes it back home.
 - Found a better starting page? Hit ⌂ to make it the new home.
 - Rename pinned tabs to swap long titles like "Inbox (23) – …" for your own names.
@@ -30,7 +30,7 @@ Arc is winding down, and these are the Arc features I missed most, so I rebuilt 
 1. Clone or download this repo.
 2. Open `chrome://extensions` and turn on **Developer mode** (top right).
 3. Click **Load unpacked** and select the project folder.
-4. Pin the Homebase icon to your toolbar and click it to open the side panel.
+4. Pin the Homing icon to your toolbar and click it to open the side panel.
 
 Requires Chrome 121 or later.
 
@@ -40,7 +40,7 @@ Requires Chrome 121 or later.
 
 | Action | How |
 | --- | --- |
-| Pin the current tab | **+ Pin tab**, right-click a page → *Pin to Homebase*, or `Alt+Shift+P` |
+| Pin the current tab | **+ Pin tab**, right-click a page → *Pin to Homing*, or `Alt+Shift+P` |
 | Go to a pinned tab | Click it (reopens it at home if it was closed) |
 | Back to home | ↺ on the tab, or `Alt+Shift+H` |
 | Make the current page home | ⌂ (shown on hover when a tab has wandered off) |
@@ -65,7 +65,7 @@ sidepanel/            The side panel UI (plain HTML/CSS/JS, no build step)
 ```
 
 - **One writer:** the side panel never changes data itself. It sends a message, and the service worker runs every change one at a time through a small promise queue, so clicks and tab events can't overwrite each other. The panel re-renders when storage changes.
-- **Tabs vs pins:** each pin stores the `tabId` it's linked to, or `null` when the tab is closed. Tab IDs change after a restart, so Homebase re-links pins to the restored pinned tabs (exact URL first, then same site).
+- **Tabs vs pins:** each pin stores the `tabId` it's linked to, or `null` when the tab is closed. Tab IDs change after a restart, so Homing re-links pins to the restored pinned tabs (exact URL first, then same site).
 - **Auto-close** checks every 5 minutes using Chrome's `tab.lastAccessed`. It never closes the tab you're looking at or one that's playing audio.
 - **Favicons** come from Chrome's built-in `_favicon` cache, so the panel makes no network requests.
 - **Safe rendering:** page titles are inserted as text, never as HTML.
@@ -73,7 +73,7 @@ sidepanel/            The side panel UI (plain HTML/CSS/JS, no build step)
 ## Known limitations
 
 - Chrome doesn't let extensions hide its own tab strip, so tabs still appear there too.
-- Unpinning a tab from Chrome's tab strip doesn't unpin it in Homebase.
+- Unpinning a tab from Chrome's tab strip doesn't unpin it in Homing.
 - After a long break, pinned tabs Chrome restores on startup may count as "untouched" and auto-close soon after. They stay in your list.
 - Pins are shared across all windows. Clicking one may switch you to the window it's open in.
 - Folders always appear above loose pinned tabs.
@@ -89,8 +89,12 @@ sidepanel/            The side panel UI (plain HTML/CSS/JS, no build step)
 
 Ideas and PRs are welcome. Open an issue first for bigger changes.
 
+## About
+
+Built by **Laiba Shahid** with AI-assisted development using [Claude](https://claude.ai). I decided what to build and how it should behave, and tested it in my own browser. Claude helped design and write the code, which I reviewed.
+
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) © 2026 Laiba Shahid
 
 *Not affiliated with The Browser Company or Arc.*
