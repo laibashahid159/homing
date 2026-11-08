@@ -230,6 +230,9 @@ svg { width: 16px; height: 16px; display: block; }
 .folder-head .row-icon { color: var(--accent); }
 .folder-name { flex: 1; min-width: 0; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .folder-count { color: var(--muted); font-size: 11px; }
+.fav-rename { grid-column: 1 / -1; }
+.fav-rename input.rename,
+.info input.rename,
 .folder-name input {
   width: 100%;
   font: inherit;

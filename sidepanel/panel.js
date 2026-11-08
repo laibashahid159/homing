@@ -1,4 +1,4 @@
-import { getState, getSettings, isDrifted, isPinnable, isInside, DEFAULT_SETTINGS } from '../src/pins.js';
+import { getState, getSettings, isDrifted, isPinnable, isInside, pinName, DEFAULT_SETTINGS } from '../src/pins.js';
 
 const favoritesEl = document.getElementById('favorites');
 const pinnedEl = document.getElementById('pinned');
@@ -19,7 +19,7 @@ const AUTO_CLOSE_OPTIONS = [
 let windowId = null;
 let state = { pins: [], folders: [] }; // last rendered state
 let settings = { ...DEFAULT_SETTINGS };
-let editingFolderId = null; // folder whose name is being edited
+let editingId = null; // folder or pin whose name is being edited
 let dragging = null;        // { kind: 'pin' | 'tab' | 'folder', id }
 let pendingRender = false;
 
@@ -182,7 +182,10 @@ function onContextMenu(node, buildItems) {
 
 function pinMenuItems(pin, tab) {
   const drifted = isDrifted(pin, tab);
-  const items = [{ text: tab ? 'Go to tab' : 'Open', action: () => send('open', { id: pin.id }) }];
+  const items = [
+    { text: tab ? 'Go to tab' : 'Open', action: () => send('open', { id: pin.id }) },
+    { text: 'Rename', action: () => startRename(pin.id) },
+  ];
   if (drifted) {
     items.push(
       { text: 'Back to home', action: () => send('reset', { id: pin.id }) },
@@ -217,8 +220,8 @@ function renderFavorite(pin, tab, activeTabId) {
   b.type = 'button';
   b.dataset.pinId = pin.id;
   b.draggable = true;
-  b.title = drifted ? `${pin.title}\nAway: ${tab.title || tab.url}` : pin.title;
-  b.setAttribute('aria-label', pin.title);
+  b.title = drifted ? `${pinName(pin)}\nAway: ${tab.title || tab.url}` : pinName(pin);
+  b.setAttribute('aria-label', pinName(pin));
   b.classList.toggle('closed', !tab);
   b.classList.toggle('active', !!tab && tab.id === activeTabId);
   const img = el('img');
@@ -236,14 +239,20 @@ function renderPinRow(pin, tab, activeTabId) {
   const li = el('li', 'row pin');
   li.dataset.pinId = pin.id;
   li.dataset.folderId = pin.folderId || '';
-  li.draggable = true;
+  const editing = editingId === pin.id;
+  li.draggable = !editing;
   li.tabIndex = 0;
-  li.title = `Home: ${pin.homeUrl}`;
+  li.title = pin.customTitle ? `${pin.title}\nHome: ${pin.homeUrl}` : `Home: ${pin.homeUrl}`;
   li.classList.toggle('closed', !tab);
   li.classList.toggle('active', !!tab && tab.id === activeTabId);
 
   const info = el('div', 'info');
-  info.append(el('span', 'title', pin.title));
+  if (editing) {
+    info.append(renameInput(pinName(pin), 'Tab name', `${pin.title} (leave empty to reset)`,
+      (text) => send('renamePin', { id: pin.id, name: text })));
+  } else {
+    info.append(el('span', 'title', pinName(pin)));
+  }
   const sub = el('span', 'sub');
   if (!tab) sub.textContent = `${hostOf(pin.homeUrl)} · closed`;
   else if (drifted) {
@@ -259,11 +268,23 @@ function renderPinRow(pin, tab, activeTabId) {
       iconButton('Back to home', 'reset', 'reset', () => send('reset', { id: pin.id })),
     );
   }
-  actions.append(iconButton('Unpin', 'close', 'secondary', () => send('unpin', { id: pin.id })));
+  actions.append(
+    iconButton('Rename', 'pencil', 'secondary', () => startRename(pin.id)),
+    iconButton('Unpin', 'close', 'secondary', () => send('unpin', { id: pin.id })),
+  );
 
   li.append(favicon(drifted ? tab.url : pin.homeUrl), info, actions);
-  li.addEventListener('click', () => send('open', { id: pin.id }));
-  li.addEventListener('keydown', (e) => { if (e.key === 'Enter') send('open', { id: pin.id }); });
+  li.addEventListener('click', () => { if (!editing) send('open', { id: pin.id }); });
+  li.addEventListener('dblclick', (e) => {
+    if (e.target.closest('.actions')) return;
+    e.preventDefault();
+    startRename(pin.id);
+  });
+  li.addEventListener('keydown', (e) => {
+    if (editing) return;
+    if (e.key === 'Enter') send('open', { id: pin.id });
+    if (e.key === 'F2') startRename(pin.id);
+  });
   onContextMenu(li, () => pinMenuItems(pin, tab));
   return li;
 }
@@ -273,23 +294,21 @@ async function newFolder(parentId = null) {
   if (res?.ok) startRename(res.result.id);
 }
 
-function renderFolderName(folder) {
-  const name = el('span', 'folder-name');
-  if (editingFolderId !== folder.id) {
-    name.textContent = folder.name;
-    return name;
-  }
-  const input = el('input');
-  input.value = folder.name;
-  input.setAttribute('aria-label', 'Folder name');
+/**
+ * An inline text box for renaming. Enter or clicking away saves,
+ * Escape cancels. `onSave` gets the new text (only if it changed).
+ */
+function renameInput(value, label, placeholder, onSave) {
+  const input = el('input', 'rename');
+  input.value = value;
+  input.placeholder = placeholder;
+  input.setAttribute('aria-label', label);
   let done = false;
   const finish = async (save) => {
     if (done) return;
     done = true;
-    editingFolderId = null;
-    if (save && input.value.trim() && input.value.trim() !== folder.name) {
-      await send('renameFolder', { id: folder.id, name: input.value });
-    }
+    editingId = null;
+    if (save && input.value.trim() !== value) await onSave(input.value);
     scheduleRender();
   };
   input.addEventListener('keydown', (e) => {
@@ -298,10 +317,22 @@ function renderFolderName(folder) {
     e.stopPropagation();
   });
   input.addEventListener('blur', () => finish(true));
-  input.addEventListener('click', (e) => e.stopPropagation());
-  input.addEventListener('dblclick', (e) => e.stopPropagation());
-  name.append(input);
+  for (const type of ['click', 'dblclick', 'mousedown']) {
+    input.addEventListener(type, (e) => e.stopPropagation());
+  }
   queueMicrotask(() => { input.focus(); input.select(); });
+  return input;
+}
+
+function renderFolderName(folder) {
+  const name = el('span', 'folder-name');
+  if (editingId !== folder.id) {
+    name.textContent = folder.name;
+    return name;
+  }
+  name.append(renameInput(folder.name, 'Folder name', 'Folder name', async (text) => {
+    if (text.trim()) await send('renameFolder', { id: folder.id, name: text });
+  }));
   return name;
 }
 
@@ -313,7 +344,7 @@ function renderFolder(folder, tabsById, activeTabId) {
   const head = el('div', 'folder-head');
   head.dataset.folderId = folder.id;
   head.dataset.parentId = folder.parentId || '';
-  head.draggable = editingFolderId !== folder.id;
+  head.draggable = editingId !== folder.id;
   head.tabIndex = 0;
   const chev = el('span', 'chev');
   chev.append(icon('chevron'));
@@ -437,6 +468,13 @@ async function render() {
   favoritesEl.replaceChildren(...(favs.length
     ? favs.map((p) => renderFavorite(p, tabsById.get(p.tabId) || null, activeTabId))
     : [document.createTextNode('Favorites: drag tabs here from the list below')]));
+  const renamingFav = favs.find((p) => p.id === editingId);
+  if (renamingFav) {
+    const box = el('div', 'fav-rename');
+    box.append(renameInput(pinName(renamingFav), 'Favorite name', `${renamingFav.title} (leave empty to reset)`,
+      (text) => send('renamePin', { id: renamingFav.id, name: text })));
+    favoritesEl.append(box);
+  }
 
   // Pinned: folders (with subfolders) first, then loose pins
   const ids = folderIds();
@@ -469,13 +507,13 @@ function scheduleRender() {
   pendingRender = true;
   setTimeout(() => {
     pendingRender = false;
-    if (dragging || (editingFolderId && document.activeElement?.tagName === 'INPUT')) return;
+    if (dragging || (editingId && document.activeElement?.tagName === 'INPUT')) return;
     render().catch(console.error);
   }, 50);
 }
 
-function startRename(folderId) {
-  editingFolderId = folderId;
+function startRename(id) {
+  editingId = id;
   render().catch(console.error);
 }
 

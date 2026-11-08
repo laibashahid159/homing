@@ -1,11 +1,12 @@
 // Pinned-tab state and the operations on it.
 //
 // A pin looks like:
-//   { id, homeUrl, title, tabId, createdAt, favorite, folderId }
+//   { id, homeUrl, title, customTitle?, tabId, createdAt, favorite, folderId }
 //
 // - `tabId` is the live Chrome tab the pin is linked to, or null when that tab
 //   is closed. Closing a pinned tab never removes the pin (same as Arc): click
 //   it again and it reopens at its home URL.
+// - `title` is the page title when pinned; `customTitle` is a name you gave it.
 // - `favorite` pins show as icons in the grid at the top of the panel.
 // - `folderId` puts a (non-favorite) pin inside a folder.
 //
@@ -135,6 +136,26 @@ export async function pinTab(tab, place = {}) {
   await savePins(pins);
   // Also pin it in Chrome's own tab strip so it looks and behaves pinned.
   await chrome.tabs.update(tab.id, { pinned: true }).catch(() => {});
+  return pin;
+}
+
+/** The name to show for a pin: your custom name, or the page title. */
+export function pinName(pin) {
+  return pin.customTitle || pin.title;
+}
+
+/**
+ * Give a pin your own name. An empty name goes back to the page title.
+ * The custom name survives "Make this page home".
+ */
+export async function renamePin(id, name) {
+  const clean = String(name || '').trim().slice(0, 80);
+  const pins = await getPins();
+  const pin = pins.find((p) => p.id === id);
+  if (!pin) throw new Error('That pin no longer exists.');
+  if (clean && clean !== pin.title) pin.customTitle = clean;
+  else delete pin.customTitle;
+  await savePins(pins);
   return pin;
 }
 

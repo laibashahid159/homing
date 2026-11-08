@@ -10,6 +10,7 @@ Arc is winding down, and these are the Arc features I missed most, so I rebuilt 
 
 - **Favorites grid.** Your most-used sites as big icons at the top, like Arc. An orange dot means the tab has wandered from home.
 - **Folders and subfolders.** Group pinned tabs into collapsible, renameable folders, nested as deep as you like.
+- **Rename pinned tabs.** Swap long page titles like "Inbox (23) – …" for your own names. Your name sticks even if you change the tab's home page.
 - **Auto-close.** Pinned tabs you haven't touched for a while (12 hours by default) close on their own. They stay in their folder, and one click reopens them at home.
 - **Today.** The window's other open tabs, listed below your pins, so the side panel can replace the tab strip.
 - **Drag and drop everywhere.** Drag a tab into Favorites, a folder, or the pinned list to pin it. Drag a pin down to Today to unpin it.
@@ -46,6 +47,7 @@ Requires Chrome 121 or later.
 | Nest or move folders | Drag a folder onto another (middle = inside, top/bottom edge = next to it) |
 | Add a tab to a folder | Drag it onto the folder, or right-click it in Today → *Add to folder* |
 | Change auto-close time | Settings icon (top right): Never, 1 hour … 1 week |
+| Rename a pinned tab | Double-click it, hover → pencil, right-click → *Rename*, or `F2`. Leave it empty to go back to the page title |
 | Unpin | × on hover, right-click → *Unpin*, or drag down to Today |
 | Reorder | Drag and drop (favorites, pins and open tabs) |
 | More options | Right-click anything |
@@ -71,7 +73,7 @@ sidepanel/            The side panel UI (plain HTML/CSS/JS, no build step)
 
 - [x] Auto-close untouched pinned tabs
 - [ ] Auto-archive open (unpinned) tabs too, with a searchable archive
-- [ ] Rename pins
+- [x] Rename pins
 - [x] Favorites grid and folders
 - [ ] Spaces (separate sets of pins for work and personal)
 - [x] Subfolders and dragging folders

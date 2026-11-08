@@ -76,6 +76,7 @@ const handlers = {
   open: ({ id, windowId }) => pins.openPin(id, windowId),
   reset: ({ id, windowId }) => pins.resetPin(id, windowId),
   setHome: ({ id }) => pins.setHomeToCurrent(id),
+  renamePin: ({ id, name }) => pins.renamePin(id, name),
   unpin: ({ id }) => pins.unpin(id),
   createFolder: ({ name, parentId }) => pins.createFolder(name, parentId),
   moveFolder: ({ id, place }) => pins.moveFolder(id, place),
